@@ -1,26 +1,41 @@
-import React, { useRef } from "react";
+import React, { useEffect, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 function CommunityPage() {
-  const fgRef = useRef();
+  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
 
-  const data = {
-    nodes: [
-      { id: "User1", group: "user" },
-      { id: "User2", group: "user" },
-      { id: "Song A", group: "song" },
-      { id: "Song B", group: "song" },
-      { id: "Song C", group: "song" },
-    ],
-    links: [
-      { source: "User1", target: "Song A" },
-      { source: "User1", target: "Song B" },
-      { source: "User2", target: "Song B" },
-      { source: "User2", target: "Song C" },
-    ],
-  };
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/community-graph"); // update URL if needed
+        const connectedUsers = await res.json();
+
+        const nodes = [];
+        const links = [];
+        const linkSet = new Set();
+
+        connectedUsers.forEach((user) => {
+          nodes.push({ id: user.id, group: "user" });
+
+          user.sharedWith.forEach((targetId) => {
+            const linkKey = [user.id, targetId].sort().join("-");
+            if (!linkSet.has(linkKey)) {
+              links.push({ source: user.id, target: targetId });
+              linkSet.add(linkKey);
+            }
+          });
+        });
+
+        setGraphData({ nodes, links });
+      } catch (error) {
+        console.error("Error fetching graph data:", error);
+      }
+    };
+
+    fetchConnections();
+  }, []);
 
   return (
     <>
@@ -28,15 +43,14 @@ function CommunityPage() {
 
       <div style={styles.container}>
         <div style={styles.card}>
-          <h2 style={styles.title}>🕸️ Your Music Social Graph</h2>
+          <h2 style={styles.title}>🕸️ Genre Based User Community</h2>
           <p style={styles.description}>
-            Here's a visual of how you and others are connected through music.
+            Here's a visual of how you are connected to other users based on shared musical taste!
           </p>
 
           <div style={styles.graphContainer}>
             <ForceGraph2D
-              ref={fgRef}
-              graphData={data}
+              graphData={graphData}
               nodeAutoColorBy="group"
               nodeLabel="id"
               linkDirectionalParticles={2}
